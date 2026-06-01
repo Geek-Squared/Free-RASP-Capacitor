@@ -171,7 +171,7 @@ var capacitorFreerasp = (function (exports, core) {
         const packageInfo = data.packageInfo;
         return {
             packageInfo,
-            reason: data.reason,
+            reasons: data.reasons,
             permissions: data.permissions,
         };
     };
@@ -359,6 +359,27 @@ var capacitorFreerasp = (function (exports, core) {
         await Talsec.removeListenerForEvent({ eventName: executionStateChannel });
     };
 
+    const DEFAULT_SCAN_SCOPE = {
+        scopeType: 'SIDELOADED_ONLY',
+    };
+    const DEFAULT_REASON_MODE = 'HIGHEST_CONFIDENCE';
+    const withDetectionDefaults = (config) => {
+        var _a, _b;
+        return (Object.assign(Object.assign({}, config), { scanScope: (_a = config.scanScope) !== null && _a !== void 0 ? _a : DEFAULT_SCAN_SCOPE, reasonMode: (_b = config.reasonMode) !== null && _b !== void 0 ? _b : DEFAULT_REASON_MODE }));
+    };
+    const normalizeAndroidConfig = (androidConfig) => {
+        if (!androidConfig.suspiciousAppDetectionConfig) {
+            return androidConfig;
+        }
+        return Object.assign(Object.assign({}, androidConfig), { suspiciousAppDetectionConfig: withDetectionDefaults(androidConfig.suspiciousAppDetectionConfig) });
+    };
+    const withDefaults = (config) => {
+        if (!config.androidConfig) {
+            return config;
+        }
+        return Object.assign(Object.assign({}, config), { androidConfig: normalizeAndroidConfig(config.androidConfig) });
+    };
+
     let isRaspStarted = false;
     const startFreeRASP = async (config, actions, raspExecutionStateActions) => {
         await registerThreatListener(actions);
@@ -368,7 +389,7 @@ var capacitorFreerasp = (function (exports, core) {
         if (isRaspStarted) {
             return { started: true };
         }
-        const response = await Talsec.talsecStart({ config });
+        const response = await Talsec.talsecStart({ config: withDefaults(config) });
         isRaspStarted = true;
         return response;
     };
