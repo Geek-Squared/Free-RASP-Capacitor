@@ -5,10 +5,12 @@ import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import com.aheaditec.freerasp.dispatchers.ExecutionStateDispatcher
+import com.aheaditec.freerasp.dispatchers.ThreatDispatcher
 import com.aheaditec.freerasp.utils.Utils
 import com.aheaditec.freerasp.utils.getArraySafe
-import com.aheaditec.freerasp.utils.getNestedArraySafe
 import com.aheaditec.freerasp.utils.toEncodedJSArray
+import com.aheaditec.freerasp.utils.toSuspiciousAppDetectionConfig
 import com.aheaditec.talsec_security.security.api.SuspiciousAppInfo
 import com.aheaditec.talsec_security.security.api.Talsec
 import com.aheaditec.talsec_security.security.api.TalsecConfig
@@ -31,10 +33,6 @@ class FreeraspPlugin : Plugin() {
 
     override fun load() {
         initializeEventKeys()
-        val pluginCallback: CapacitorCallback = { eventName, data ->
-            notifyListeners(eventName, data, true)
-        }
-        PluginThreatHandler.initializeDispatchers(PluginListener(context, pluginCallback))
         super.load()
     }
 
@@ -78,11 +76,14 @@ class FreeraspPlugin : Plugin() {
     @PluginMethod(returnType = PluginMethod.RETURN_NONE)
     override fun addListener(call: PluginCall) {
         val eventName = call.getString("eventName")
+        val pluginCallback: CapacitorCallback = { eventName, data ->
+            notifyListeners(eventName, data, true)
+        }
         if (eventName == ThreatEvent.CHANNEL_NAME) {
-            PluginThreatHandler.threatDispatcher.registerListener()
+            ThreatDispatcher.registerListener(PluginListener(context, pluginCallback))
         }
         if (eventName == RaspExecutionStateEvent.CHANNEL_NAME) {
-            PluginThreatHandler.executionStateDispatcher.registerListener()
+            ExecutionStateDispatcher.registerListener(PluginListener(context, pluginCallback))
         }
         super.addListener(call)
     }
@@ -91,31 +92,31 @@ class FreeraspPlugin : Plugin() {
     fun removeListenerForEvent(call: PluginCall) {
         val eventName = call.getString("eventName")
         if (eventName == ThreatEvent.CHANNEL_NAME) {
-            PluginThreatHandler.threatDispatcher.unregisterListener()
+            ThreatDispatcher.unregisterListener()
         }
         if (eventName == RaspExecutionStateEvent.CHANNEL_NAME) {
-            PluginThreatHandler.executionStateDispatcher.unregisterListener()
+            ExecutionStateDispatcher.unregisterListener()
         }
     }
 
     override fun handleOnPause() {
         super.handleOnPause()
-        PluginThreatHandler.threatDispatcher.onPause()
-        PluginThreatHandler.executionStateDispatcher.onPause()
+        ThreatDispatcher.onPause()
+        ExecutionStateDispatcher.onPause()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ScreenProtector.unregister(activity)
         }
         if (activity.isFinishing) {
-            PluginThreatHandler.threatDispatcher.unregisterListener()
-            PluginThreatHandler.executionStateDispatcher.unregisterListener()
+            ThreatDispatcher.unregisterListener()
+            ExecutionStateDispatcher.unregisterListener()
             PluginThreatHandler.unregisterSDKListener(context)
         }
     }
 
     override fun handleOnResume() {
         super.handleOnResume()
-        PluginThreatHandler.threatDispatcher.onResume()
-        PluginThreatHandler.executionStateDispatcher.onResume()
+        ThreatDispatcher.onResume()
+        ExecutionStateDispatcher.onResume()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ScreenProtector.register(activity)
         }
@@ -314,13 +315,12 @@ class FreeraspPlugin : Plugin() {
             .prod(configJson.getBool("isProd") ?: true)
             .killOnBypass(configJson.getBool("killOnBypass") ?: false)
 
-        if (androidConfig.has("malwareConfig")) {
-            val malwareConfig = androidConfig.getJSONObject("malwareConfig")
-            talsecBuilder.whitelistedInstallationSources(malwareConfig.getArraySafe("whitelistedInstallationSources"))
-            talsecBuilder.blacklistedHashes(malwareConfig.getArraySafe("blacklistedHashes"))
-            talsecBuilder.blacklistedPackageNames(malwareConfig.getArraySafe("blacklistedPackageNames"))
-            talsecBuilder.suspiciousPermissions(malwareConfig.getNestedArraySafe("suspiciousPermissions"))
+        if (androidConfig.has("suspiciousAppDetectionConfig")) {
+            talsecBuilder.suspiciousAppDetection(
+                androidConfig.getJSONObject("suspiciousAppDetectionConfig").toSuspiciousAppDetectionConfig()
+            )
         }
+
         return talsecBuilder.build()
     }
 

@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-05-15
+
+- Android SDK version: 18.3.0
+- iOS SDK version: 6.14.4
+
+### Breaking
+
+- `SuspiciousAppInfo.reason` (String) renamed to `reasons` (string[])
+- Value `"blacklist"` in `reasons` renamed to `"blocklist"`
+- Removed `TalsecMalwareConfig` and `TalsecAndroidConfig.malwareConfig`
+- `SuspiciousAppDetectionConfig.malwareScanScope` and `reasonMode` are now required
+
+### Capacitor
+
+#### Added
+
+- `SuspiciousAppDetectionConfig` for malware detection configuration
+
+#### Removed
+
+- `TalsecMalwareConfig` type and `TalsecAndroidConfig.malwareConfig` field
+
+### Android
+
+#### Added
+
+- New API class `SuspiciousAppDetectionConfig` that can be used to configure malware detection
+- New API for malware detection configuration in `TalsecConfig`, see `TalsecConfig.Builder#suspiciousAppDetection`
+
+#### Fixed
+
+- Fixed `VerifyError` caused by JaCoCo bytecode instrumentation
+- Fixed a potential cause of crash in the multi-instance detector
+- Fixed Java interoperability of `ScreenProtector` methods
+- Fixed Kotlin classpath conflicts in SDK dependency resolution (Kotlin 2.0.0)
+
+#### Changed
+
+- Fine-tuned location spoofing detection
+- Modified malware incident log structure for better aggregation
+
+## [2.5.1] - 2026-03-24
+
+- Android SDK version: 18.0.4
+- iOS SDK version: 6.14.4
+
+### Capacitor
+
+#### Fixed
+
+- Fixed case where event dispatchers on Android were not initialized before calling onResume at the app launch
+
+### iOS
+
+#### Fixed
+
+- Fixed new jailbreak checks false positives on iOS 14 and 13.
+- Fixed false positives with jailbreak on iOS 15 and 16.
+- Fixed issue with app crashing on screenshot/screen recording.
+- Fixed retrigger jailbreak issue on iOS 15 and 16.
+
 ## [2.5.0] - 2026-03-03
 
 - Android SDK version: 18.0.4

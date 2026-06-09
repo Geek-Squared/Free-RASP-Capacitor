@@ -6,6 +6,10 @@ import android.util.Base64
 import android.util.Log
 import com.aheaditec.freerasp.models.CapPackageInfo
 import com.aheaditec.freerasp.models.CapSuspiciousAppInfo
+import com.aheaditec.talsec_security.security.api.MalwareScanScope
+import com.aheaditec.talsec_security.security.api.ReasonMode
+import com.aheaditec.talsec_security.security.api.ScopeType
+import com.aheaditec.talsec_security.security.api.SuspiciousAppDetectionConfig
 import com.aheaditec.talsec_security.security.api.SuspiciousAppInfo
 import com.getcapacitor.JSArray
 import kotlinx.serialization.encodeToString
@@ -50,13 +54,33 @@ internal fun JSONObject.getNestedArraySafe(key: String): Array<Array<String>> {
     return outArray.toTypedArray()
 }
 
+internal fun JSONObject.toScanScope(): MalwareScanScope {
+    val scopeType = ScopeType.valueOf(getString("scopeType"))
+    val trustedInstallSources = optJSONArray("trustedInstallSources")
+        ?.toPrimitiveArray<String>()?.toList()
+    return MalwareScanScope(scopeType, trustedInstallSources)
+}
+
+internal fun JSONObject.toSuspiciousAppDetectionConfig(): SuspiciousAppDetectionConfig {
+    val scanScope = getJSONObject("scanScope").toScanScope()
+    val reasonMode = ReasonMode.valueOf(getString("reasonMode"))
+    return SuspiciousAppDetectionConfig(
+        getArraySafe("packageNames").toSet().takeIf { it.isNotEmpty() },
+        getArraySafe("hashes").toSet().takeIf { it.isNotEmpty() },
+        getNestedArraySafe("requestedPermissions").map { it.toSet() }.toSet().takeIf { it.isNotEmpty() },
+        getNestedArraySafe("grantedPermissions").map { it.toSet() }.toSet().takeIf { it.isNotEmpty() },
+        scanScope,
+        reasonMode,
+    )
+}
+
 /**
  * Converts the Talsec's SuspiciousAppInfo to Capacitor equivalent
  */
 internal fun SuspiciousAppInfo.toCapSuspiciousAppInfo(context: Context): CapSuspiciousAppInfo {
     return CapSuspiciousAppInfo(
         packageInfo = this.packageInfo.toCapPackageInfo(context),
-        reason = this.reason,
+        reasons = this.reasons,
         permissions = this.permissions
     )
 }
