@@ -86,3 +86,10 @@ tsconfig.json
 ci-template.ejs
 deploy.sh
 ejs-config*
+
+# Keep Talsec .jbroot probe files inside TalsecRuntime.xcframework.
+# They are zero-byte files sealed by the framework's code signature; the
+# `**/.*` rule above otherwise strips them and breaks signature validation
+# ("a sealed resource is missing or invalid") on iOS.
+!**/.jbroot
+!**/.jbroot/**
